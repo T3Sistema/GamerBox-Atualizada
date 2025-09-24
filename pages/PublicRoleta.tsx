@@ -1,30 +1,130 @@
 
 // FIX: Refactored component to use the prop-based API of RoletaWheel, resolving ref-related errors.
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useData } from '../context/DataContext';
-import { Prize } from '../types';
+import { Prize, Company } from '../types';
 import { RoletaWheel } from '../components/collaborator/RoletaWheel';
 import { WinnerModal } from '../components/collaborator/WinnerModal';
 import { Triad3Logo } from '../components/Triad3Logo';
 import { Footer } from '../components/Footer';
+import { supabase } from '../src/lib/supabaseClient';
+
+// Helper to convert snake_case from DB to camelCase for the app
+const snakeToCamel = (str: string) => str.replace(/([-_][a-z])/g, (group) => group.toUpperCase().replace('_', ''));
+const toCamel = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(v => toCamel(v));
+  } else if (obj !== null && obj.constructor === Object) {
+    return Object.keys(obj).reduce((result, key) => ({
+      ...result,
+      [snakeToCamel(key)]: toCamel(obj[key]),
+    }), {});
+  }
+  return obj;
+};
+
+type Step = 'loading' | 'register' | 'spin' | 'spun' | 'error' | 'already_participated';
 
 export const PublicRoleta: React.FC = () => {
     const { companyId } = useParams<{ companyId: string }>();
-    const { companies, companyPrizes } = useData();
-
+    
+    const [company, setCompany] = useState<Company | null>(null);
+    const [prizes, setPrizes] = useState<Prize[]>([]);
+    const [step, setStep] = useState<Step>('loading');
+    
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+    const [formError, setFormError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [participantId, setParticipantId] = useState<string | null>(null);
+    
     const [isWinnerModalOpen, setIsWinnerModalOpen] = useState(false);
     const [winner, setWinner] = useState<Prize | null>(null);
-    const [isSpun, setIsSpun] = useState(false);
     const [isSpinning, setIsSpinning] = useState(false);
     const [winningPrizeId, setWinningPrizeId] = useState<string | null>(null);
 
-    const company = useMemo(() => companies.find(c => c.id === companyId), [companies, companyId]);
-    const prizes = useMemo(() => companyId ? companyPrizes(companyId) : [], [companyId, companyPrizes]);
+    useEffect(() => {
+        const fetchPublicData = async () => {
+            if (!companyId) {
+                setStep('error');
+                return;
+            }
+
+            const { data: companyData, error: companyError } = await supabase.from('companies').select('*').eq('id', companyId).single();
+            if (companyError || !companyData) {
+                console.error("Error fetching company:", companyError);
+                setStep('error');
+                return;
+            }
+
+            const companyDetails: Company = toCamel(companyData);
+            setCompany(companyDetails);
+            
+            if (localStorage.getItem(`spun_roleta_${companyDetails.id}`) === 'true') {
+                setStep('already_participated');
+                return;
+            }
+
+            const { data: prizesData, error: prizesError } = await supabase.from('prizes').select('*').eq('company_id', companyId);
+            if (prizesError) {
+                console.error("Error fetching prizes:", prizesError);
+            }
+
+            setPrizes(toCamel(prizesData || []));
+            setStep('register');
+        };
+        fetchPublicData();
+    }, [companyId]);
+    
+     const handleRegister = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!company) return;
+
+        setIsSubmitting(true);
+        setFormError('');
+
+        const { data: existing, error: findError } = await supabase
+            .from('roleta_participants')
+            .select('id')
+            .eq('email', formData.email.toLowerCase())
+            .eq('company_id', company.id)
+            .maybeSingle();
+            
+        if (existing) {
+            setFormError('Este e-mail já participou da roleta deste estande.');
+            setIsSubmitting(false);
+            localStorage.setItem(`spun_roleta_${company.id}`, 'true');
+            setStep('already_participated');
+            return;
+        }
+
+        const { data, error } = await supabase
+            .from('roleta_participants')
+            .insert({
+                name: formData.name,
+                email: formData.email.toLowerCase(),
+                phone: formData.phone,
+                company_id: company.id,
+            })
+            .select()
+            .single();
+
+        setIsSubmitting(false);
+
+        if (error || !data) {
+            setFormError('Ocorreu um erro ao registrar. Tente novamente.');
+            console.error('Registration Error:', error);
+        } else {
+            setParticipantId(data.id);
+            setStep('spin');
+        }
+    };
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
 
     const handleSpin = () => {
-        if (isSpun || isSpinning || prizes.length < 2) return;
-        setIsSpun(true);
+        if (isSpinning || step !== 'spin' || prizes.length < 2) return;
 
         const winnerIndex = Math.floor(Math.random() * prizes.length);
         const winnerData = prizes[winnerIndex];
@@ -35,50 +135,85 @@ export const PublicRoleta: React.FC = () => {
 
         const spinDurationMs = 5000;
 
-        setTimeout(() => {
+        setTimeout(async () => {
+            if (participantId) {
+                await supabase
+                    .from('roleta_participants')
+                    .update({ prize_name: winnerData.name, spun_at: new Date().toISOString() })
+                    .eq('id', participantId);
+            }
+            if (company) {
+                 localStorage.setItem(`spun_roleta_${company.id}`, 'true');
+            }
             setIsSpinning(false);
             setIsWinnerModalOpen(true);
+            setStep('spun');
         }, spinDurationMs);
     };
 
-    const handleCloseWinnerModal = () => {
-        setIsWinnerModalOpen(false);
-        // Não reseta o isSpun para impedir múltiplos giros, a menos que seja uma regra de negócio.
-    };
-
-    if (!company) {
-        return <div className="text-center p-8 text-white bg-dark-background min-h-screen flex items-center justify-center">Estande não encontrado.</div>;
+    const renderContent = () => {
+        switch (step) {
+            case 'loading':
+                return <p className="text-lg">Carregando roleta...</p>;
+            case 'error':
+                 return <p className="text-xl font-bold text-red-400">Estande não encontrado.</p>;
+            case 'already_participated':
+                 return (
+                    <div className="text-center">
+                        <h2 className="text-2xl font-bold text-green-400">Obrigado por participar!</h2>
+                        <p className="mt-2">Você já girou a roleta deste estande. Boa sorte!</p>
+                    </div>
+                );
+            case 'register':
+                return (
+                    <div className="w-full max-w-sm">
+                         <h2 className="text-2xl font-bold mb-1">Cadastre-se para Girar!</h2>
+                         <p className="text-gray-400 mb-6">Preencha seus dados para concorrer.</p>
+                         <form onSubmit={handleRegister} className="space-y-4 text-left">
+                            <input type="text" name="name" placeholder="Nome Completo" onChange={handleChange} required className="input-style" />
+                            <input type="email" name="email" placeholder="Seu Melhor E-mail" onChange={handleChange} required className="input-style" />
+                            <input type="tel" name="phone" placeholder="Seu WhatsApp" onChange={handleChange} required className="input-style" />
+                            {formError && <p className="text-sm text-red-400 text-center">{formError}</p>}
+                            <button type="submit" disabled={isSubmitting} className="w-full btn-primary">{isSubmitting ? 'Enviando...' : 'Quero Girar!'}</button>
+                         </form>
+                    </div>
+                );
+            case 'spin':
+            case 'spun':
+                 return (
+                     <>
+                        <RoletaWheel
+                            prizes={prizes}
+                            isSpinning={isSpinning}
+                            winningPrizeId={winningPrizeId}
+                            companyLogoUrl={company?.logoUrl}
+                            segmentColorsOverride={company?.roletaColors}
+                        />
+                        <button 
+                            onClick={handleSpin} 
+                            disabled={prizes.length < 2 || step === 'spun' || isSpinning}
+                            className="mt-8 px-12 py-4 text-xl font-bold text-white bg-gradient-to-r from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary rounded-lg shadow-lg hover:scale-105 active:scale-100 transition-all duration-300 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed disabled:transform-none"
+                        >
+                            {isSpinning ? 'Girando...' : (step === 'spun' ? 'Boa Sorte!' : 'Girar Roleta!')}
+                        </button>
+                        {prizes.length < 2 && <p className="text-xs text-red-500 mt-2">A roleta está temporariamente indisponível.</p>}
+                     </>
+                 );
+        }
     }
 
     return (
         <div className="flex flex-col min-h-screen bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text">
-            <WinnerModal isOpen={isWinnerModalOpen} onClose={handleCloseWinnerModal} winner={winner} />
+            <WinnerModal isOpen={isWinnerModalOpen} onClose={() => setIsWinnerModalOpen(false)} winner={winner} />
             <header className="py-4">
                 <div className="container mx-auto flex flex-col items-center text-center">
-                    <img src={company.logoUrl || 'https://via.placeholder.com/80?text=Logo'} alt={company.name} className="h-20 w-20 rounded-md object-cover mb-2" />
-                    <h1 className="text-3xl font-bold">{company.name}</h1>
-                    <p className="text-lg text-gray-500 dark:text-gray-400">Gire a roleta e boa sorte!</p>
+                    <img src={company?.logoUrl || 'https://via.placeholder.com/80?text=Logo'} alt={company?.name} className="h-20 w-20 rounded-md object-cover mb-2" />
+                    <h1 className="text-3xl font-bold">{company?.name}</h1>
                 </div>
             </header>
 
             <main className="flex-grow flex flex-col items-center justify-center p-4">
-                <RoletaWheel
-                    prizes={prizes}
-                    isSpinning={isSpinning}
-                    winningPrizeId={winningPrizeId}
-                    companyLogoUrl={company.logoUrl}
-                    segmentColorsOverride={company.roletaColors}
-                />
-                <button 
-                    onClick={handleSpin} 
-                    disabled={prizes.length < 2 || isSpun}
-                    className="mt-8 px-12 py-4 text-xl font-bold text-white bg-gradient-to-r from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary rounded-lg shadow-lg hover:scale-105 active:scale-100 transition-all duration-300 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed disabled:transform-none"
-                >
-                    {isSpun ? 'Boa Sorte!' : 'Girar Roleta'}
-                </button>
-                {prizes.length < 2 && <p className="text-xs text-red-500 mt-2">A roleta está temporariamente indisponível.</p>}
-                {isSpinning && <p className="text-sm text-gray-400 mt-2 animate-pulse">Girando...</p>}
-                 {isSpun && !isSpinning && <p className="text-sm text-green-400 mt-2">Obrigado por participar!</p>}
+               {renderContent()}
             </main>
             
             <div className="w-full mt-auto">
@@ -87,6 +222,23 @@ export const PublicRoleta: React.FC = () => {
             <div className="fixed bottom-4 right-4">
                 <Triad3Logo className="w-20" />
             </div>
+            <style>{`
+            .input-style {
+                display: block; width: 100%; padding: 0.75rem; background-color: #05080F;
+                border: 1px solid #1A202C; border-radius: 0.375rem; color: #E0E0E0;
+            }
+            .dark .input-style { background-color: #10141F; border-color: #1A202C; }
+            .light .input-style { background-color: #F9FAFB; border-color: #E5E7EB; color: #1F2937 }
+
+            .btn-primary {
+                padding: 0.75rem 1rem; border-radius: 0.375rem; font-weight: 600; color: white;
+                background-image: linear-gradient(to right, var(--color-primary-light), var(--color-secondary-light));
+                transition: opacity 0.2s;
+            }
+            .dark .btn-primary { background-image: linear-gradient(to right, var(--color-primary-dark), var(--color-secondary-dark)); color: black; }
+            .btn-primary:hover { opacity: 0.9; }
+            .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+          `}</style>
         </div>
     );
 };

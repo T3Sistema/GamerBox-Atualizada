@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { Prize } from '../types';
@@ -12,6 +13,32 @@ import { RoletaWheel } from '../components/collaborator/RoletaWheel';
 import { WinnerModal } from '../components/collaborator/WinnerModal';
 import { QRCodeModal } from '../components/collaborator/QRCodeModal';
 import QRCode from 'qrcode';
+import { supabase } from '../src/lib/supabaseClient';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+interface RoletaParticipant {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  prizeName: string | null;
+  spunAt: string | null;
+}
+
+// Helper to convert snake_case from DB to camelCase for the app
+const snakeToCamel = (str: string) => str.replace(/([-_][a-z])/g, (group) => group.toUpperCase().replace('_', ''));
+const toCamel = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(v => toCamel(v));
+  } else if (obj !== null && obj.constructor === Object) {
+    return Object.keys(obj).reduce((result, key) => ({
+      ...result,
+      [snakeToCamel(key)]: toCamel(obj[key]),
+    }), {});
+  }
+  return obj;
+};
 
 export const CollaboratorRoleta: React.FC = () => {
     const { loggedInCollaboratorCompany, companyPrizes, savePrize, deletePrize, updateCompanySettings } = useData();
@@ -33,10 +60,32 @@ export const CollaboratorRoleta: React.FC = () => {
     
     const [colors, setColors] = useState(loggedInCollaboratorCompany?.roletaColors || ['#00D1FF', '#FFFFFF']);
 
+    // State for History
+    const [history, setHistory] = useState<RoletaParticipant[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
+
     useEffect(() => {
         if (loggedInCollaboratorCompany?.roletaColors) {
             setColors(loggedInCollaboratorCompany.roletaColors);
         }
+        
+        const fetchHistory = async () => {
+            if (!loggedInCollaboratorCompany) return;
+            setHistoryLoading(true);
+            const { data, error } = await supabase
+                .from('roleta_participants')
+                .select('*')
+                .eq('company_id', loggedInCollaboratorCompany.id)
+                .order('spun_at', { ascending: false, nullsFirst: true });
+
+            if (data) {
+                setHistory(toCamel(data));
+            }
+            setHistoryLoading(false);
+        };
+
+        fetchHistory();
+
     }, [loggedInCollaboratorCompany]);
 
     if (!loggedInCollaboratorCompany) {
@@ -111,6 +160,46 @@ export const CollaboratorRoleta: React.FC = () => {
           console.error('Failed to generate QR code', err);
           setNotification({ message: 'Falha ao gerar QR Code.', type: 'error' });
         }
+    };
+    
+    const handleDownloadCSV = () => {
+        const headers = ['Nome', 'Email', 'Telefone', 'Prêmio Ganho', 'Data do Giro'];
+        const csvContent = [
+            headers.join(','),
+            ...history.map(p => [
+                `"${p.name}"`,
+                `"${p.email}"`,
+                `"${p.phone}"`,
+                `"${p.prizeName || 'N/A'}"`,
+                `"${p.spunAt ? new Date(p.spunAt).toLocaleString('pt-BR') : 'Ainda não girou'}"`
+            ].join(','))
+        ].join('\n');
+
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `historico_roleta_${loggedInCollaboratorCompany.name.replace(/\s+/g, '_')}.csv`;
+        link.click();
+    };
+
+    const handleDownloadPDF = () => {
+        const doc = new jsPDF();
+        autoTable(doc, {
+            head: [['Nome', 'Email', 'Telefone', 'Prêmio', 'Data']],
+            body: history.map(p => [
+                p.name,
+                p.email,
+                p.phone,
+                p.prizeName || 'N/A',
+                p.spunAt ? new Date(p.spunAt).toLocaleString('pt-BR') : 'Ainda não girou'
+            ]),
+            startY: 20,
+            didDrawPage: (data) => {
+                doc.setFontSize(18);
+                doc.text(`Histórico da Roleta - ${loggedInCollaboratorCompany.name}`, data.settings.margin.left, 15);
+            }
+        });
+        doc.save(`historico_roleta_${loggedInCollaboratorCompany.name.replace(/\s+/g, '_')}.pdf`);
     };
 
     return (
@@ -198,23 +287,60 @@ export const CollaboratorRoleta: React.FC = () => {
                         </div>
                     </div>
                 </div>
+
+                <div className="mt-8 bg-light-card dark:bg-dark-card shadow-lg rounded-lg p-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+                        <h3 className="text-xl font-bold text-light-text dark:text-dark-text">Histórico de Giros ({history.length})</h3>
+                        <div className="flex items-center gap-2">
+                             <button onClick={handleDownloadCSV} disabled={history.length === 0} className="btn-secondary text-sm">Exportar CSV</button>
+                             <button onClick={handleDownloadPDF} disabled={history.length === 0} className="btn-secondary text-sm">Exportar PDF</button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto max-h-96">
+                        <table className="min-w-full divide-y divide-light-border dark:divide-dark-border">
+                            <thead className="bg-light-background dark:bg-dark-background sticky top-0">
+                                <tr>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contato</th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prêmio</th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-light-card dark:bg-dark-card divide-y divide-light-border dark:divide-dark-border">
+                                {historyLoading ? (
+                                    <tr><td colSpan={4} className="text-center py-4">Carregando histórico...</td></tr>
+                                ) : history.length === 0 ? (
+                                    <tr><td colSpan={4} className="text-center py-4 text-gray-500">Nenhum giro registrado ainda.</td></tr>
+                                ) : (
+                                    history.map(p => (
+                                        <tr key={p.id}>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-light-text dark:text-dark-text">{p.name}</td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.email}<br/>{p.phone}</td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                                {p.prizeName ? 
+                                                    <span className="font-semibold text-light-text dark:text-dark-text">{p.prizeName}</span> : 
+                                                    <span className="text-xs text-yellow-600 dark:text-yellow-400">Aguardando giro</span>
+                                                }
+                                            </td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.spunAt ? new Date(p.spunAt).toLocaleString('pt-BR') : '-'}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
             <style>{`
-                input[type="color"]::-webkit-color-swatch-wrapper {
-                    padding: 0;
-                }
-                input[type="color"]::-webkit-color-swatch {
-                    border: 2px solid #4a5568;
-                    border-radius: 0.375rem;
-                }
-                 input[type="color"] {
-                     -webkit-appearance: none;
-                     border: none;
-                     width: 100%;
-                     height: 2.5rem;
-                     border-radius: 0.375rem;
-                     background-color: var(--color);
-                 }
+                input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+                input[type="color"]::-webkit-color-swatch { border: 2px solid #4a5568; border-radius: 0.375rem; }
+                input[type="color"] { -webkit-appearance: none; border: none; width: 100%; height: 2.5rem; border-radius: 0.375rem; background-color: var(--color); }
+                .btn-secondary { padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; color: var(--color-text-light, #111827); background-color: var(--color-card-light, #ffffff); border: 1px solid var(--color-border-light, #e5e7eb); transition: background-color 0.2s; }
+                .dark .btn-secondary { color: var(--color-text-dark, #f7fafc); background-color: var(--color-card-dark, #2d3748); border-color: var(--color-border-dark, #4a5568); }
+                .btn-secondary:hover { background-color: var(--color-border-light, #e5e7eb); }
+                .dark .btn-secondary:hover { background-color: var(--color-border-dark, #4a5568); }
+                .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
             `}</style>
         </>
     );
