@@ -109,10 +109,10 @@ export const CompanyFormModal: React.FC<CompanyFormModalProps> = ({ isOpen, onCl
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                      <input type="text" name="name" placeholder="Nome da Empresa" value={formData.name} onChange={handleChange} required className="input-style" />
-                     <input type="text" name="responsibleName" placeholder="Nome do Responsável" value={formData.responsibleName} onChange={handleChange} required className="input-style" />
+                     <input type="text" name="responsibleName" placeholder="Nome do Responsável" value={formData.responsibleName} onChange={handleChange} className="input-style" />
                      <input type="text" name="code" placeholder="Código do Estande" value={formData.code} onChange={handleChange} required className="input-style uppercase" />
-                     <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} required className="input-style" />
-                     <input type="tel" name="phone" placeholder="Telefone" value={formData.phone} onChange={handleChange} required className="input-style" />
+                     <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} className="input-style" />
+                     <input type="tel" name="phone" placeholder="Telefone" value={formData.phone} onChange={handleChange} className="input-style" />
                     <div>
                         <label className="block text-sm font-medium text-light-text dark:text-dark-text">Logo da Empresa</label>
                         <div className="mt-1 flex items-center gap-4">

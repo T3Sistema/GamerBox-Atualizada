@@ -6,12 +6,14 @@ import { PlusIcon } from '../components/icons/PlusIcon';
 import { CompanyCard } from '../components/organizer/CompanyCard';
 import { CompanyFormModal } from '../components/organizer/CompanyFormModal';
 import { CollaboratorManagementModal } from '../components/organizer/CollaboratorManagementModal';
+import { RoletaQRCodeModal } from '../components/organizer/RoletaQRCodeModal';
 
 export const Expositores: React.FC = () => {
-  const { eventCompanies, saveCompany, deleteCompany, companyCollaborators, selectedEvent } = useData();
+  const { eventCompanies, saveCompany, deleteCompany, companyCollaborators, selectedEvent, generateAndSaveRoletaQrCode } = useData();
   
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isCollabModalOpen, setIsCollabModalOpen] = useState(false);
+  const [qrModalCompany, setQrModalCompany] = useState<Company | null>(null);
   
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [managingCompany, setManagingCompany] = useState<Company | null>(null);
@@ -38,6 +40,19 @@ export const Expositores: React.FC = () => {
     }
   };
 
+  const handleViewQrCode = async (company: Company) => {
+    if (company.roletaQrCodeUrl) {
+      setQrModalCompany(company);
+    } else {
+      const updatedCompany = await generateAndSaveRoletaQrCode(company.id);
+      if (updatedCompany) {
+        setQrModalCompany(updatedCompany);
+      } else {
+        alert("Não foi possível gerar o QR Code. Tente novamente.");
+      }
+    }
+  };
+
   if (!selectedEvent) {
     return (
       <div className="container mx-auto p-4 md:p-8 text-center">
@@ -60,6 +75,10 @@ export const Expositores: React.FC = () => {
         isOpen={isCollabModalOpen}
         onClose={() => setIsCollabModalOpen(false)}
         company={managingCompany}
+      />
+      <RoletaQRCodeModal
+        company={qrModalCompany}
+        onClose={() => setQrModalCompany(null)}
       />
 
       <div className="container mx-auto p-4 md:p-8">
@@ -86,6 +105,7 @@ export const Expositores: React.FC = () => {
                 onEdit={() => handleOpenFormModal(company)}
                 onDelete={() => handleDelete(company.id)}
                 onManageCollaborators={() => handleOpenCollabModal(company)}
+                onViewQrCode={() => handleViewQrCode(company)}
               />
             ))}
           </div>

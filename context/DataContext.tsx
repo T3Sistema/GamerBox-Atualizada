@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { Organizer, Event, Raffle, Participant, Company, Collaborator, Prize } from '../types';
 import { supabase } from '../src/lib/supabaseClient';
+import QRCode from 'qrcode';
 
 // Helper to use localStorage for authentication state
 const useStickyState = <T,>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] => {
@@ -111,6 +112,7 @@ interface DataContextType {
 
   // Company/Collaborator mutations
   saveCompany: (companyData: Omit<Company, 'id' | 'eventId'>, id?: string) => Promise<void>;
+  generateAndSaveRoletaQrCode: (companyId: string) => Promise<Company | null>;
   updateCompanySettings: (companyId: string, settings: Partial<Pick<Company, 'roletaColors'>>) => void;
   deleteCompany: (id: string) => void;
   companyCollaborators: (companyId: string) => Collaborator[];
@@ -562,6 +564,35 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if(loggedInOrganizer) fetchOrganizerData(loggedInOrganizer.id);
   };
   
+  const generateAndSaveRoletaQrCode = async (companyId: string): Promise<Company | null> => {
+    try {
+        const baseUrl = `${window.location.origin}${window.location.pathname}`;
+        const participationUrl = `${baseUrl}#/roleta/${companyId}`;
+        const dataUrl = await QRCode.toDataURL(participationUrl, { width: 256, margin: 2 });
+
+        const { data, error } = await supabase
+            .from('companies')
+            .update({ roleta_qr_code_url: dataUrl })
+            .eq('id', companyId)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        
+        const updatedCompany = toCamel(data) as Company;
+        
+        // Update local state immediately
+        setCompanies(prevCompanies => 
+            prevCompanies.map(c => c.id === companyId ? updatedCompany : c)
+        );
+
+        return updatedCompany;
+    } catch (err) {
+        console.error('Failed to generate and save QR code', err);
+        return null;
+    }
+  };
+
   const updateCompanySettings = async (companyId: string, settings: Partial<Pick<Company, 'roletaColors'>>) => {
       await supabase.from('companies').update(toSnake(settings)).eq('id', companyId);
       if(loggedInCollaborator) fetchCollaboratorData(loggedInCollaborator.companyId);
@@ -649,7 +680,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (selectedRaffleIds.length === 0) return 0;
         return participants.filter(p => selectedRaffleIds.includes(p.raffleId) && !p.isWinner).length;
     }, [participants, selectedRaffleIds]),
-    findRaffleByCode, createEventWithRaffle, saveOrganizer, deleteOrganizer, saveEvent, deleteEvent, saveCompany, updateCompanySettings,
+    findRaffleByCode, createEventWithRaffle, saveOrganizer, deleteOrganizer, saveEvent, deleteEvent, saveCompany, generateAndSaveRoletaQrCode, updateCompanySettings,
     deleteCompany,
     companyCollaborators: useCallback((companyId: string) => collaborators.filter(c => c.companyId === companyId), [collaborators]),
     addCollaborator, updateCollaborator, deleteCollaborator, validateCollaborator,

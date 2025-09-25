@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Collaborator } from '../../types';
 import { XIcon } from '../icons/XIcon';
@@ -84,8 +85,8 @@ export const CollaboratorFormModal: React.FC<CollaboratorFormModalProps> = ({ is
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input type="text" name="name" placeholder="Nome" value={formData.name} onChange={handleChange} required className="input-style" />
                     <input type="text" name="code" placeholder="Código do Colaborador" value={formData.code} onChange={handleChange} required className="input-style uppercase" />
-                    <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} required className="input-style" />
-                    <input type="tel" name="phone" placeholder="Telefone" value={formData.phone} onChange={handleChange} required className="input-style" />
+                    <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} className="input-style" />
+                    <input type="tel" name="phone" placeholder="Telefone" value={formData.phone} onChange={handleChange} className="input-style" />
                      <div>
                         <label className="block text-sm font-medium text-light-text dark:text-dark-text">Foto do Colaborador</label>
                         <div className="mt-1 flex items-center gap-4">

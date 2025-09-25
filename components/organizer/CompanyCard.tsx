@@ -3,6 +3,7 @@ import { Company } from '../../types';
 import { EditIcon } from '../icons/EditIcon';
 import { TrashIcon } from '../icons/TrashIcon';
 import { UsersIcon } from '../icons/UsersIcon';
+import { QrCodeIcon } from '../icons/QrCodeIcon';
 
 interface CompanyCardProps {
   company: Company;
@@ -10,6 +11,7 @@ interface CompanyCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onManageCollaborators: () => void;
+  onViewQrCode: () => void;
 }
 
 const SystemBadge: React.FC<{ name: string; active: boolean }> = ({ name, active }) => (
@@ -18,7 +20,7 @@ const SystemBadge: React.FC<{ name: string; active: boolean }> = ({ name, active
     </span>
 );
 
-export const CompanyCard: React.FC<CompanyCardProps> = ({ company, collaboratorCount, onEdit, onDelete, onManageCollaborators }) => {
+export const CompanyCard: React.FC<CompanyCardProps> = ({ company, collaboratorCount, onEdit, onDelete, onManageCollaborators, onViewQrCode }) => {
   return (
     <div className="bg-light-card dark:bg-dark-card rounded-lg shadow-lg overflow-hidden border border-light-border dark:border-dark-border/50 transition-all duration-300 hover:shadow-xl hover:border-light-primary/50 dark:hover:border-dark-primary/50 flex flex-col">
       <div className="p-5 flex-grow flex flex-col">
@@ -53,6 +55,15 @@ export const CompanyCard: React.FC<CompanyCardProps> = ({ company, collaboratorC
             <span>{collaboratorCount} Colaborador(es)</span>
           </button>
           <div className="flex gap-2">
+            {company.hasRoleta && (
+              <button
+                onClick={onViewQrCode}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-cyan-500 dark:hover:text-cyan-400 hover:bg-cyan-500/10 rounded-full transition-colors"
+                aria-label={`QR Code Roleta para ${company.name}`}
+              >
+                <QrCodeIcon className="h-5 w-5" />
+              </button>
+            )}
             <button
               onClick={onEdit}
               className="p-2 text-gray-500 dark:text-gray-400 hover:text-light-primary dark:hover:text-dark-primary hover:bg-light-border dark:hover:bg-dark-border/50 rounded-full transition-colors"

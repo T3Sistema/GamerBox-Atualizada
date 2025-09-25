@@ -47,6 +47,7 @@ export interface Company {
   hasSorteio: boolean;
   hasRoleta: boolean;
   roletaColors?: string[];
+  roletaQrCodeUrl?: string;
 }
 
 export interface Collaborator {

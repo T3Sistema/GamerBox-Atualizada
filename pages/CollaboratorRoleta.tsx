@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { Prize } from '../types';
@@ -12,7 +14,6 @@ import { Notification } from '../components/Notification';
 import { RoletaWheel } from '../components/collaborator/RoletaWheel';
 import { WinnerModal } from '../components/collaborator/WinnerModal';
 import { QRCodeModal } from '../components/collaborator/QRCodeModal';
-import QRCode from 'qrcode';
 import { supabase } from '../src/lib/supabaseClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -41,7 +42,7 @@ const toCamel = (obj: any): any => {
 };
 
 export const CollaboratorRoleta: React.FC = () => {
-    const { loggedInCollaboratorCompany, companyPrizes, savePrize, deletePrize, updateCompanySettings } = useData();
+    const { loggedInCollaboratorCompany, companyPrizes, savePrize, deletePrize, updateCompanySettings, generateAndSaveRoletaQrCode } = useData();
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -149,16 +150,29 @@ export const CollaboratorRoleta: React.FC = () => {
         setNotification({ message: 'Cores salvas com sucesso!', type: 'success' });
     };
     
-    const handleGenerateQrCode = async () => {
+    const handleViewQrCode = async () => {
+        const company = loggedInCollaboratorCompany;
+        if (!company) return;
+    
         try {
-          const baseUrl = `${window.location.origin}${window.location.pathname}`;
-          const participationUrl = `${baseUrl}#/roleta/${loggedInCollaboratorCompany.id}`;
-          const dataUrl = await QRCode.toDataURL(participationUrl, { width: 256, margin: 2 });
-          setQrCodeData({ dataUrl, cleanUrl: participationUrl });
-          setIsQrModalOpen(true);
+            let qrUrl = company.roletaQrCodeUrl;
+            if (!qrUrl) {
+                const updatedCompany = await generateAndSaveRoletaQrCode(company.id);
+                if (updatedCompany?.roletaQrCodeUrl) {
+                    qrUrl = updatedCompany.roletaQrCodeUrl;
+                } else {
+                    throw new Error("Failed to generate QR Code.");
+                }
+            }
+            
+            const baseUrl = `${window.location.origin}${window.location.pathname}`;
+            const participationUrl = `${baseUrl}#/roleta/${company.id}`;
+            
+            setQrCodeData({ dataUrl: qrUrl, cleanUrl: participationUrl });
+            setIsQrModalOpen(true);
         } catch (err) {
-          console.error('Failed to generate QR code', err);
-          setNotification({ message: 'Falha ao gerar QR Code.', type: 'error' });
+            console.error('Failed to show QR code', err);
+            setNotification({ message: 'Falha ao visualizar o QR Code.', type: 'error' });
         }
     };
     
@@ -281,8 +295,8 @@ export const CollaboratorRoleta: React.FC = () => {
                                     Salvar Cores
                                 </button>
                             </div>
-                            <button onClick={handleGenerateQrCode} className="w-full text-center py-3 px-4 font-semibold text-cyan-800 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-500/20 hover:bg-cyan-200 dark:hover:bg-cyan-500/30 rounded-lg transition-colors">
-                                Gerar QR Code para Participantes
+                            <button onClick={handleViewQrCode} className="w-full text-center py-3 px-4 font-semibold text-cyan-800 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-500/20 hover:bg-cyan-200 dark:hover:bg-cyan-500/30 rounded-lg transition-colors">
+                                Visualizar QR Code
                             </button>
                         </div>
                     </div>
