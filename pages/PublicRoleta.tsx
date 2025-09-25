@@ -289,7 +289,7 @@ export const PublicRoleta: React.FC = () => {
                 background-image: linear-gradient(to right, var(--color-primary-light), var(--color-secondary-light));
                 transition: opacity 0.2s;
             }
-            .dark .btn-primary { background-image: linear-gradient(to right, var(--color-primary-dark), var(--color-secondary-dark)); color: black; }
+            .dark .btn-primary { background-image: linear-gradient(to right, var(--color-primary-dark), var(--color-secondary-dark)); color: white; }
             .btn-primary:hover { opacity: 0.9; }
             .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
           `}</style>
