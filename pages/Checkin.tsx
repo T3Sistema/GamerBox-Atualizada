@@ -31,7 +31,7 @@ export const Checkin: React.FC = () => {
       <div className="w-full max-w-md">
         <div className="bg-dark-card p-8 rounded-lg shadow-xl text-center">
             <Triad3Logo className="w-48 mx-auto mb-6" />
-            <h1 className="text-3xl font-bold text-dark-primary mb-2">GamerBox Triad3</h1>
+            <h1 className="text-3xl font-bold text-dark-primary mb-2">GameBox Triad3</h1>
             <p className="text-gray-400 mb-6">Acesso da Equipe e Colaboradores</p>
             <form onSubmit={handleSubmit} className="space-y-6 text-left">
               <div>
