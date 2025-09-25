@@ -1,4 +1,3 @@
-
 // FIX: Refactored component to use the prop-based API of RoletaWheel, resolving ref-related errors.
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
@@ -23,7 +22,7 @@ const toCamel = (obj: any): any => {
   return obj;
 };
 
-type Step = 'loading' | 'register' | 'spin' | 'spun' | 'error' | 'already_participated';
+type Step = 'loading' | 'register' | 'verify_collaborator' | 'spin' | 'spun' | 'error' | 'already_participated';
 
 export const PublicRoleta: React.FC = () => {
     const { companyId } = useParams<{ companyId: string }>();
@@ -33,6 +32,7 @@ export const PublicRoleta: React.FC = () => {
     const [step, setStep] = useState<Step>('loading');
     
     const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+    const [collaboratorCode, setCollaboratorCode] = useState('');
     const [formError, setFormError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [participantId, setParticipantId] = useState<string | null>(null);
@@ -115,7 +115,7 @@ export const PublicRoleta: React.FC = () => {
             console.error('Registration Error:', error);
         } else {
             setParticipantId(data.id);
-            setStep('spin');
+            setStep('verify_collaborator');
         }
     };
     
@@ -123,8 +123,8 @@ export const PublicRoleta: React.FC = () => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    const handleSpin = () => {
-        if (isSpinning || step !== 'spin' || prizes.length < 2) return;
+    const startSpin = () => {
+        if (isSpinning || prizes.length < 2) return;
 
         const winnerIndex = Math.floor(Math.random() * prizes.length);
         const winnerData = prizes[winnerIndex];
@@ -151,6 +151,35 @@ export const PublicRoleta: React.FC = () => {
         }, spinDurationMs);
     };
 
+    const handleVerifyCollaborator = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!companyId || !collaboratorCode) {
+            setFormError('Por favor, insira o código do colaborador.');
+            return;
+        }
+
+        setIsSubmitting(true);
+        setFormError('');
+
+        const { data, error } = await supabase
+            .from('collaborators')
+            .select('id')
+            .eq('company_id', companyId)
+            .eq('code', collaboratorCode.toUpperCase())
+            .maybeSingle();
+
+        if (error || !data) {
+            setIsSubmitting(false);
+            setFormError('Código do colaborador inválido.');
+        } else {
+            setStep('spin');
+             // Use a small timeout to allow React to render the wheel before spinning
+            setTimeout(() => {
+                startSpin();
+            }, 100);
+        }
+    };
+
     const renderContent = () => {
         switch (step) {
             case 'loading':
@@ -174,7 +203,30 @@ export const PublicRoleta: React.FC = () => {
                             <input type="email" name="email" placeholder="Seu Melhor E-mail" onChange={handleChange} required className="input-style" />
                             <input type="tel" name="phone" placeholder="Seu WhatsApp" onChange={handleChange} required className="input-style" />
                             {formError && <p className="text-sm text-red-400 text-center">{formError}</p>}
-                            <button type="submit" disabled={isSubmitting} className="w-full btn-primary">{isSubmitting ? 'Enviando...' : 'Quero Girar!'}</button>
+                            <button type="submit" disabled={isSubmitting} className="w-full btn-primary">{isSubmitting ? 'Enviando...' : 'Avançar'}</button>
+                         </form>
+                    </div>
+                );
+            case 'verify_collaborator':
+                 return (
+                    <div className="w-full max-w-sm">
+                         <h2 className="text-2xl font-bold mb-1">Validação do Colaborador</h2>
+                         <p className="text-gray-400 mb-6">Peça a um colaborador do estande para inserir o código pessoal dele para liberar a roleta.</p>
+                         <form onSubmit={handleVerifyCollaborator} className="space-y-4 text-left">
+                            <input 
+                                type="text" 
+                                name="collaboratorCode" 
+                                placeholder="Código do Colaborador" 
+                                value={collaboratorCode} 
+                                onChange={(e) => setCollaboratorCode(e.target.value.toUpperCase())} 
+                                required 
+                                className="input-style uppercase" 
+                                autoFocus
+                            />
+                            {formError && <p className="text-sm text-red-400 text-center">{formError}</p>}
+                            <button type="submit" disabled={isSubmitting} className="w-full btn-primary">
+                                {isSubmitting ? 'Verificando...' : 'Validar e Girar'}
+                            </button>
                          </form>
                     </div>
                 );
@@ -189,13 +241,15 @@ export const PublicRoleta: React.FC = () => {
                             companyLogoUrl={company?.logoUrl}
                             segmentColorsOverride={company?.roletaColors}
                         />
-                        <button 
-                            onClick={handleSpin} 
-                            disabled={prizes.length < 2 || step === 'spun' || isSpinning}
-                            className="mt-8 px-12 py-4 text-xl font-bold text-white bg-gradient-to-r from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary rounded-lg shadow-lg hover:scale-105 active:scale-100 transition-all duration-300 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed disabled:transform-none"
-                        >
-                            {isSpinning ? 'Girando...' : (step === 'spun' ? 'Boa Sorte!' : 'Girar Roleta!')}
-                        </button>
+                         {isSpinning && (
+                            <p className="mt-8 text-xl font-bold animate-pulse text-light-primary dark:text-dark-primary">Boa sorte!</p>
+                        )}
+                        {step === 'spun' && !isSpinning && (
+                            <div className="mt-8 text-center">
+                                <p className="text-xl font-bold text-green-400">Prêmio definido!</p>
+                                <p className="text-gray-400">Obrigado por participar.</p>
+                            </div>
+                        )}
                         {prizes.length < 2 && <p className="text-xs text-red-500 mt-2">A roleta está temporariamente indisponível.</p>}
                      </>
                  );
