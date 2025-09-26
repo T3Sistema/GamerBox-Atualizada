@@ -168,15 +168,12 @@ export const PublicRoleta: React.FC = () => {
             .eq('code', collaboratorCode.toUpperCase())
             .maybeSingle();
 
+        setIsSubmitting(false);
+
         if (error || !data) {
-            setIsSubmitting(false);
             setFormError('Código do colaborador inválido.');
         } else {
             setStep('spin');
-             // Use a small timeout to allow React to render the wheel before spinning
-            setTimeout(() => {
-                startSpin();
-            }, 100);
         }
     };
 
@@ -225,7 +222,7 @@ export const PublicRoleta: React.FC = () => {
                             />
                             {formError && <p className="text-sm text-red-400 text-center">{formError}</p>}
                             <button type="submit" disabled={isSubmitting} className="w-full btn-primary">
-                                {isSubmitting ? 'Verificando...' : 'Validar e Girar'}
+                                {isSubmitting ? 'Verificando...' : 'Validar'}
                             </button>
                          </form>
                     </div>
@@ -241,8 +238,20 @@ export const PublicRoleta: React.FC = () => {
                             companyLogoUrl={company?.logoUrl}
                             segmentColorsOverride={company?.roletaColors}
                         />
+                        {step === 'spin' && !isSpinning && (
+                            <div className="mt-8 text-center w-full max-w-sm">
+                                <p className="text-lg font-semibold mb-4">Tudo pronto! Boa sorte!</p>
+                                <button
+                                    onClick={startSpin}
+                                    disabled={isSpinning || prizes.length < 2}
+                                    className="w-full btn-primary text-xl py-4"
+                                >
+                                    Girar a Roleta!
+                                </button>
+                            </div>
+                        )}
                          {isSpinning && (
-                            <p className="mt-8 text-xl font-bold animate-pulse text-light-primary dark:text-dark-primary">Boa sorte!</p>
+                            <p className="mt-8 text-xl font-bold animate-pulse text-light-primary dark:text-dark-primary">Girando... Boa sorte!</p>
                         )}
                         {step === 'spun' && !isSpinning && (
                             <div className="mt-8 text-center">
