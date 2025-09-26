@@ -82,27 +82,29 @@ export const PublicRoleta: React.FC = () => {
         setIsSubmitting(true);
         setFormError('');
 
-        const { data: existing, error: findError } = await supabase
-            .from('roleta_participants')
-            .select('id')
-            .eq('email', formData.email.toLowerCase())
-            .eq('company_id', company.id)
-            .maybeSingle();
-            
-        if (existing) {
-            setFormError('Este e-mail já participou da roleta deste estande.');
-            setIsSubmitting(false);
-            localStorage.setItem(`spun_roleta_${company.id}`, 'true');
-            setStep('already_participated');
-            return;
+        if (formData.email) { // Only check for existing email if provided
+            const { data: existing } = await supabase
+                .from('roleta_participants')
+                .select('id')
+                .eq('email', formData.email.toLowerCase())
+                .eq('company_id', company.id)
+                .maybeSingle();
+                
+            if (existing) {
+                setFormError('Este e-mail já participou da roleta deste estande.');
+                setIsSubmitting(false);
+                localStorage.setItem(`spun_roleta_${company.id}`, 'true');
+                setStep('already_participated');
+                return;
+            }
         }
 
         const { data, error } = await supabase
             .from('roleta_participants')
             .insert({
                 name: formData.name,
-                email: formData.email.toLowerCase(),
-                phone: formData.phone,
+                email: formData.email ? formData.email.toLowerCase() : null,
+                phone: formData.phone || null,
                 company_id: company.id,
             })
             .select()
@@ -197,8 +199,8 @@ export const PublicRoleta: React.FC = () => {
                          <p className="text-gray-400 mb-6">Preencha seus dados para concorrer.</p>
                          <form onSubmit={handleRegister} className="space-y-4 text-left">
                             <input type="text" name="name" placeholder="Nome Completo" onChange={handleChange} required className="input-style" />
-                            <input type="email" name="email" placeholder="Seu Melhor E-mail" onChange={handleChange} required className="input-style" />
-                            <input type="tel" name="phone" placeholder="Seu WhatsApp" onChange={handleChange} required className="input-style" />
+                            <input type="email" name="email" placeholder="Seu E-mail (Opcional)" onChange={handleChange} className="input-style" />
+                            <input type="tel" name="phone" placeholder="Seu WhatsApp (Opcional)" onChange={handleChange} className="input-style" />
                             {formError && <p className="text-sm text-red-400 text-center">{formError}</p>}
                             <button type="submit" disabled={isSubmitting} className="w-full btn-primary">{isSubmitting ? 'Enviando...' : 'Avançar'}</button>
                          </form>
