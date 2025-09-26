@@ -98,8 +98,11 @@ export const RoletaWheel: React.FC<RoletaWheelProps> = ({
     <div className="relative w-full max-w-xs sm:max-w-sm aspect-square mx-auto my-4">
       <svg viewBox="0 0 320 320" className="w-full h-full select-none">
         <g 
-          transform={`rotate(${rotation} ${center} ${center})`}
-          style={{ transition: isSpinning ? `transform ${spinDuration}s cubic-bezier(0.25, 0.1, 0.25, 1)` : 'none' }}
+          style={{ 
+            transform: `rotate(${rotation}deg)`,
+            transformOrigin: `${center}px ${center}px`,
+            transition: isSpinning ? `transform ${spinDuration}s cubic-bezier(0.25, 0.1, 0.25, 1)` : 'none' 
+          }}
         >
           {prizes.map((prize, index) => {
             const startAngle = index * anglePerSlice;
