@@ -1,3 +1,4 @@
+
 // FIX: Refactored component to use the prop-based API of RoletaWheel, resolving ref-related errors.
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
@@ -204,7 +205,7 @@ export const PublicRoleta: React.FC = () => {
                             <input type="email" name="email" placeholder="Seu E-mail (Opcional)" onChange={handleChange} className="input-style" />
                             <input type="tel" name="phone" placeholder="Seu WhatsApp (Opcional)" onChange={handleChange} className="input-style" />
                             {formError && <p className="text-sm text-red-400 text-center">{formError}</p>}
-                            <button type="submit" disabled={isSubmitting} className="w-full btn-primary">{isSubmitting ? 'Enviando...' : 'Avançar'}</button>
+                            <button type="submit" disabled={isSubmitting} className="w-full py-3 px-4 font-bold text-white bg-gradient-to-r from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary rounded-lg shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100">{isSubmitting ? 'Enviando...' : 'Avançar'}</button>
                          </form>
                     </div>
                 );
@@ -225,7 +226,7 @@ export const PublicRoleta: React.FC = () => {
                                 autoFocus
                             />
                             {formError && <p className="text-sm text-red-400 text-center">{formError}</p>}
-                            <button type="submit" disabled={isSubmitting} className="w-full btn-primary">
+                            <button type="submit" disabled={isSubmitting} className="w-full py-3 px-4 font-bold text-white bg-gradient-to-r from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary rounded-lg shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100">
                                 {isSubmitting ? 'Verificando...' : 'Validar'}
                             </button>
                          </form>
@@ -248,7 +249,7 @@ export const PublicRoleta: React.FC = () => {
                                 <button
                                     onClick={startSpin}
                                     disabled={isSpinning || prizes.length < 2}
-                                    className="w-full btn-primary text-xl py-4"
+                                    className="w-full py-4 text-xl font-bold text-white bg-gradient-to-r from-light-primary to-light-secondary dark:from-dark-primary dark:to-dark-secondary rounded-lg shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100 animate-pulse disabled:animate-none"
                                 >
                                     Girar a Roleta!
                                 </button>
@@ -294,14 +295,11 @@ export const PublicRoleta: React.FC = () => {
             .dark .input-style { background-color: #10141F; border-color: #1A202C; }
             .light .input-style { background-color: #F9FAFB; border-color: #E5E7EB; color: #1F2937 }
 
-            .btn-primary {
-                padding: 0.75rem 1rem; border-radius: 0.375rem; font-weight: 600; color: white;
-                background-image: linear-gradient(to right, var(--color-primary-light), var(--color-secondary-light));
-                transition: opacity 0.2s;
+            .btn-secondary {
+                 padding: 0.75rem 1rem; border-radius: 0.375rem; font-weight: 600; color: #E0E0E0;
+                background-color: #1A202C; transition: background-color 0.2s;
             }
-            .dark .btn-primary { background-image: linear-gradient(to right, var(--color-primary-dark), var(--color-secondary-dark)); color: white; }
-            .btn-primary:hover { opacity: 0.9; }
-            .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+            .btn-secondary:hover { background-color: #2d2d2d; }
           `}</style>
         </div>
     );
