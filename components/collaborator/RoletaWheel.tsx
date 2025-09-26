@@ -121,6 +121,11 @@ export const RoletaWheel: React.FC<RoletaWheelProps> = ({
             const bgColor = currentSegmentColors[index % currentSegmentColors.length];
             const textColor = getTextColorForBg(bgColor);
 
+            // Calculate the maximum width of the text to fit it inside the slice.
+            // This is the chord length at the text's radius, with some padding.
+            const sliceWidth = 2 * textRadius * Math.sin((anglePerSlice / 2) * Math.PI / 180);
+            const maxTextLength = sliceWidth * 0.9; // Use 90% of the space for padding.
+
             return (
               <g key={prize.id}>
                 <path
@@ -135,9 +140,11 @@ export const RoletaWheel: React.FC<RoletaWheelProps> = ({
                     textAnchor="middle"
                     dominantBaseline="central"
                     fill={textColor}
-                    style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                    style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}
                     className="pointer-events-none"
                     transform={`rotate(${midAngleDeg + 90} ${textX} ${textY})`}
+                    textLength={maxTextLength}
+                    lengthAdjust="spacingAndGlyphs"
                 >
                     {prize.name}
                 </text>
