@@ -4,7 +4,6 @@ import { useParams } from 'react-router-dom';
 import { Prize, Company } from '../types';
 import { RoletaWheel } from '../components/collaborator/RoletaWheel';
 import { WinnerModal } from '../components/collaborator/WinnerModal';
-import { Triad3Logo } from '../components/Triad3Logo';
 import { Footer } from '../components/Footer';
 import { supabase } from '../src/lib/supabaseClient';
 
@@ -286,9 +285,6 @@ export const PublicRoleta: React.FC = () => {
             
             <div className="w-full mt-auto">
                  <Footer />
-            </div>
-            <div className="fixed bottom-4 right-4">
-                <Triad3Logo className="w-20" />
             </div>
             <style>{`
             .input-style {
