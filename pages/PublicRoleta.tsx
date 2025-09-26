@@ -82,11 +82,14 @@ export const PublicRoleta: React.FC = () => {
         setIsSubmitting(true);
         setFormError('');
 
-        if (formData.email) { // Only check for existing email if provided
+        const trimmedEmail = formData.email.trim();
+        const trimmedPhone = formData.phone.trim();
+
+        if (trimmedEmail) { // Only check for existing email if provided
             const { data: existing } = await supabase
                 .from('roleta_participants')
                 .select('id')
-                .eq('email', formData.email.toLowerCase())
+                .eq('email', trimmedEmail.toLowerCase())
                 .eq('company_id', company.id)
                 .maybeSingle();
                 
@@ -102,9 +105,9 @@ export const PublicRoleta: React.FC = () => {
         const { data, error } = await supabase
             .from('roleta_participants')
             .insert({
-                name: formData.name,
-                email: formData.email ? formData.email.toLowerCase() : null,
-                phone: formData.phone || null,
+                name: formData.name.trim(),
+                email: trimmedEmail ? trimmedEmail.toLowerCase() : null,
+                phone: trimmedPhone ? trimmedPhone : null,
                 company_id: company.id,
             })
             .select()

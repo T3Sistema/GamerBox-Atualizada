@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { Prize } from '../types';
@@ -182,8 +183,8 @@ export const CollaboratorRoleta: React.FC = () => {
             headers.join(','),
             ...history.map(p => [
                 `"${p.name}"`,
-                `"${p.email}"`,
-                `"${p.phone}"`,
+                `"${p.email || 'N/D'}"`,
+                `"${p.phone || 'N/D'}"`,
                 `"${p.prizeName || 'N/A'}"`,
                 `"${p.spunAt ? new Date(p.spunAt).toLocaleString('pt-BR') : 'Ainda não girou'}"`
             ].join(','))
@@ -202,8 +203,8 @@ export const CollaboratorRoleta: React.FC = () => {
             head: [['Nome', 'Email', 'Telefone', 'Prêmio', 'Data']],
             body: history.map(p => [
                 p.name,
-                p.email,
-                p.phone,
+                p.email || 'N/D',
+                p.phone || 'N/D',
                 p.prizeName || 'N/A',
                 p.spunAt ? new Date(p.spunAt).toLocaleString('pt-BR') : 'Ainda não girou'
             ]),
@@ -329,7 +330,7 @@ export const CollaboratorRoleta: React.FC = () => {
                                     history.map(p => (
                                         <tr key={p.id}>
                                             <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-light-text dark:text-dark-text">{p.name}</td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.email}<br/>{p.phone}</td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{p.email || 'N/D'}<br/>{p.phone || 'N/D'}</td>
                                             <td className="px-4 py-2 whitespace-nowrap text-sm">
                                                 {p.prizeName ? 
                                                     <span className="font-semibold text-light-text dark:text-dark-text">{p.prizeName}</span> : 
