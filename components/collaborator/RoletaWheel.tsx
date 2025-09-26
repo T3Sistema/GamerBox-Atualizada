@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Prize } from '../../types';
 
@@ -46,34 +47,37 @@ export const RoletaWheel: React.FC<RoletaWheelProps> = ({
   const currentSegmentColors = segmentColorsOverride && segmentColorsOverride.length > 0 ? segmentColorsOverride : defaultSegmentColors;
 
   useEffect(() => {
-    // Este efeito é acionado apenas quando 'isSpinning' se torna verdadeiro.
+    // When the spin ends, "normalize" the rotation angle to keep it manageable.
+    // This doesn't change the visual position but prevents the rotation value
+    // from growing infinitely, which is better for performance and precision.
+    // This also helps create a clearer state change for browsers like Safari.
     if (!isSpinning) {
+      setRotation(currentRotation => currentRotation % 360);
       return;
     }
 
-    // Usamos um timeout para garantir que o navegador (especialmente o Safari)
-    // tenha tempo de renderizar o componente com a propriedade 'transition' ativada
-    // ANTES de atualizarmos o 'transform' com a nova rotação. Isso força a animação.
+    // We use a timeout to ensure that the browser (especially Safari)
+    // has time to render the component with the 'transition' property enabled
+    // BEFORE we update the 'transform' with the new rotation. This forces the animation.
     const spinTimeout = setTimeout(() => {
       setRotation(prevRotation => {
-        const fullSpins = Math.floor(Math.random() * 2) + 4; // Adiciona 4-5 rotações completas
+        const fullSpins = Math.floor(Math.random() * 2) + 4; // Add 4-5 full rotations
         let targetAngleForPrizeSegment = 0;
 
         if (winningPrizeId) {
           const winningIndex = prizes.findIndex(p => p.id === winningPrizeId);
           if (winningIndex !== -1) {
-            // Posiciona o ponteiro no meio do segmento vencedor
-            // A rotação é negativa para girar no sentido horário
+            // Position the pointer in the middle of the winning segment
+            // The rotation is negative to spin clockwise
             targetAngleForPrizeSegment = -(winningIndex * anglePerSlice + anglePerSlice / 2);
           }
         }
         
-        // A nova rotação de destino. Não usamos prevRotation aqui para garantir um destino absoluto,
-        // mas a animação começará do valor atual de 'rotation' no DOM.
+        // The new target rotation. The animation will start from the current 'rotation' value in the DOM.
         const newTargetRotation = (fullSpins * 360) + targetAngleForPrizeSegment;
         return newTargetRotation;
       });
-    }, 50); // Aumentamos o delay para 50ms para maior robustez no iOS.
+    }, 50); // Increased delay to 50ms for better stability on iOS.
 
     return () => clearTimeout(spinTimeout);
   }, [isSpinning, winningPrizeId, prizes, anglePerSlice]);
