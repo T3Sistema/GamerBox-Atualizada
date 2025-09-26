@@ -46,34 +46,38 @@ export const RoletaWheel: React.FC<RoletaWheelProps> = ({
   const currentSegmentColors = segmentColorsOverride && segmentColorsOverride.length > 0 ? segmentColorsOverride : defaultSegmentColors;
 
   useEffect(() => {
-    if (numPrizes === 0) return;
-
-    if (isSpinning) {
-      const fullSpins = Math.floor(Math.random() * 2) + 4; 
-      let targetAngleForPrizeSegment = 0;
-
-      if (winningPrizeId) {
-        const winningIndex = prizes.findIndex(p => p.id === winningPrizeId);
-        if (winningIndex !== -1) {
-          targetAngleForPrizeSegment = -(winningIndex * anglePerSlice + anglePerSlice / 2);
-        } else {
-          targetAngleForPrizeSegment = Math.random() * -360; 
-        }
-      } else {
-        targetAngleForPrizeSegment = Math.random() * -360;
-      }
-      
-      const newTargetRotation = (fullSpins * 360) + targetAngleForPrizeSegment;
-      setRotation(newTargetRotation);
-
-    } else if (!isSpinning && winningPrizeId) {
-      const winningIndex = prizes.findIndex(p => p.id === winningPrizeId);
-      if (winningIndex !== -1) {
-        const finalAngle = -(winningIndex * anglePerSlice + anglePerSlice / 2);
-        setRotation(finalAngle);
-      }
+    // Este efeito é acionado apenas quando 'isSpinning' se torna verdadeiro.
+    if (!isSpinning) {
+      return;
     }
-  }, [isSpinning, winningPrizeId, prizes, anglePerSlice, numPrizes]);
+
+    // Usamos um timeout para garantir que o navegador (especialmente o Safari)
+    // tenha tempo de renderizar o componente com a propriedade 'transition' ativada
+    // ANTES de atualizarmos o 'transform' com a nova rotação. Isso força a animação.
+    const spinTimeout = setTimeout(() => {
+      setRotation(prevRotation => {
+        const fullSpins = Math.floor(Math.random() * 2) + 4; // Adiciona 4-5 rotações completas
+        let targetAngleForPrizeSegment = 0;
+
+        if (winningPrizeId) {
+          const winningIndex = prizes.findIndex(p => p.id === winningPrizeId);
+          if (winningIndex !== -1) {
+            // Posiciona o ponteiro no meio do segmento vencedor
+            // A rotação é negativa para girar no sentido horário
+            targetAngleForPrizeSegment = -(winningIndex * anglePerSlice + anglePerSlice / 2);
+          }
+        }
+        
+        // A nova rotação de destino. Não usamos prevRotation aqui para garantir um destino absoluto,
+        // mas a animação começará do valor atual de 'rotation' no DOM.
+        const newTargetRotation = (fullSpins * 360) + targetAngleForPrizeSegment;
+        return newTargetRotation;
+      });
+    }, 50); // Aumentamos o delay para 50ms para maior robustez no iOS.
+
+    return () => clearTimeout(spinTimeout);
+  }, [isSpinning, winningPrizeId, prizes, anglePerSlice]);
+
 
   if (numPrizes === 0) {
     return <div className="text-neutral-500 dark:text-neutral-400 text-center py-10">Adicione prêmios para ativar a roleta.</div>;
