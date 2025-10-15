@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Prize } from '../../types';
 
@@ -122,12 +121,12 @@ export const RoletaWheel: React.FC<RoletaWheelProps> = ({
             const textColor = getTextColorForBg(bgColor);
 
             // Text wrapping logic
-            const FONT_SIZE = 12;
+            const FONT_SIZE = 11;
             const LINE_HEIGHT = FONT_SIZE * 1.2;
 
             // Calculate max characters per line based on the slice's width at the text's radius
             const sliceWidthAtTextRadius = 2 * textRadius * Math.sin((anglePerSlice / 2) * Math.PI / 180);
-            const effectiveWidth = sliceWidthAtTextRadius * 0.85; // Use 85% of width for padding
+            const effectiveWidth = sliceWidthAtTextRadius * 0.6; // Use only 60% of width for better padding
             const avgCharWidthRatio = 0.7; // Heuristic for average uppercase character width relative to font size
             const maxCharsPerLine = Math.max(1, Math.floor(effectiveWidth / (FONT_SIZE * avgCharWidthRatio)));
 
