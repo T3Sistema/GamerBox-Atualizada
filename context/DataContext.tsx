@@ -594,7 +594,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateCompanySettings = async (companyId: string, settings: Partial<Pick<Company, 'roletaColors'>>) => {
-      await supabase.from('companies').update(toSnake(settings)).eq('id', companyId);
+      const { error } = await supabase.from('companies').update(toSnake(settings)).eq('id', companyId);
+      if (error) {
+        console.error("Error updating company settings:", error);
+      }
       if(loggedInCollaborator) fetchCollaboratorData(loggedInCollaborator.companyId);
   };
 

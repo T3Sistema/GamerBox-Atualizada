@@ -1,4 +1,3 @@
-
 // FIX: Refactored component to use the prop-based API of RoletaWheel, resolving ref-related errors.
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';

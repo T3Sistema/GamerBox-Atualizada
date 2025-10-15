@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { Prize } from '../types';
@@ -64,6 +63,8 @@ export const CollaboratorRoleta: React.FC = () => {
     const [historyLoading, setHistoryLoading] = useState(true);
 
     useEffect(() => {
+        // This effect ensures that the local `colors` state is updated
+        // whenever the company data (including roletaColors) is refreshed from the context.
         if (loggedInCollaboratorCompany?.roletaColors) {
             setColors(loggedInCollaboratorCompany.roletaColors);
         }
