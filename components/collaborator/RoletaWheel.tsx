@@ -121,6 +121,34 @@ export const RoletaWheel: React.FC<RoletaWheelProps> = ({
             const bgColor = currentSegmentColors[index % currentSegmentColors.length];
             const textColor = getTextColorForBg(bgColor);
 
+            // Text wrapping logic
+            const FONT_SIZE = 12;
+            const LINE_HEIGHT = FONT_SIZE * 1.2;
+
+            // Calculate max characters per line based on the slice's width at the text's radius
+            const sliceWidthAtTextRadius = 2 * textRadius * Math.sin((anglePerSlice / 2) * Math.PI / 180);
+            const effectiveWidth = sliceWidthAtTextRadius * 0.85; // Use 85% of width for padding
+            const avgCharWidthRatio = 0.7; // Heuristic for average uppercase character width relative to font size
+            const maxCharsPerLine = Math.max(1, Math.floor(effectiveWidth / (FONT_SIZE * avgCharWidthRatio)));
+
+            const words = prize.name.split(' ');
+            const lines: string[] = [];
+            let currentLine = words[0] || '';
+
+            for (let i = 1; i < words.length; i++) {
+              if ((currentLine + " " + words[i]).length > maxCharsPerLine && currentLine.length > 0) {
+                lines.push(currentLine);
+                currentLine = words[i];
+              } else {
+                currentLine += " " + words[i];
+              }
+            }
+            if (currentLine) lines.push(currentLine);
+
+            const totalTextHeight = lines.length * LINE_HEIGHT;
+            // Calculate the starting Y position for the first line to vertically center the entire text block
+            const startY = textY - (totalTextHeight / 2) + (LINE_HEIGHT / 2);
+
             return (
               <g key={prize.id}>
                 <path
@@ -130,16 +158,17 @@ export const RoletaWheel: React.FC<RoletaWheelProps> = ({
                   strokeWidth="2"
                 />
                 <text
-                    x={textX}
-                    y={textY}
                     textAnchor="middle"
-                    dominantBaseline="central"
                     fill={textColor}
-                    style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                    style={{ fontSize: `${FONT_SIZE}px`, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}
                     className="pointer-events-none"
                     transform={`rotate(${midAngleDeg + 90} ${textX} ${textY})`}
                 >
-                    {prize.name}
+                    {lines.map((line, i) => (
+                        <tspan key={i} x={textX} y={startY + (i * LINE_HEIGHT)}>
+                            {line}
+                        </tspan>
+                    ))}
                 </text>
               </g>
             );
